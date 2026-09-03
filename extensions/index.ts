@@ -9,10 +9,10 @@ import { getAgentDir, getSettingsPath } from "@earendil-works/pi-coding-agent";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import * as nodeFs from "node:fs";
 import { join } from "node:path";
-import { runSubmodel } from "./submodel/command.ts";
-import { detectPiSubagentsVersion } from "./submodel/version-detect.ts";
-import type { EditorTheme } from "./submodel/editor/theme.ts";
-import type { EditorExit } from "./submodel/types.ts";
+import { runSubmodel } from "../src/submodel/command.ts";
+import { detectPiSubagentsVersion } from "../src/submodel/version-detect.ts";
+import type { EditorTheme } from "../src/submodel/editor/theme.ts";
+import type { EditorExit } from "../src/submodel/types.ts";
 
 /**
  * Resolve the user-level settings.json path. Older Pi releases (0.84.x) do not re-export

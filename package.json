@@ -1,6 +1,6 @@
 {
   "name": "pi-submodel",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Pi extension: keyboard-first /submodel TUI to configure pi-subagents model policy (default model, per-agent primary, thinking, ordered fallbacks)",
   "type": "module",
   "license": "MIT",
@@ -17,7 +17,7 @@
   },
   "pi": {
     "extensions": [
-      "./src/index.ts"
+      "./extensions/index.ts"
     ]
   },
   "peerDependencies": {
@@ -35,6 +35,7 @@
   },
   "files": [
     "src",
+    "extensions",
     "README.md",
     "README.zh-CN.md",
     "LICENSE",

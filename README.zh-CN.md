@@ -152,7 +152,7 @@ npm test          # node --test
 npm run typecheck
 ```
 
-架构：`src/index.ts` 是一层很薄的 Pi 适配器；实际行为都在可测试的命令 seam（`src/submodel/command.ts`）后面，测试用临时设置文件、假模型 registry 和可驱动的编辑器组件来驱动它。
+架构：`extensions/index.ts` 是一层很薄的 Pi 适配器；实际行为都在可测试的命令 seam（`src/submodel/command.ts`）后面，测试用临时设置文件、假模型 registry 和可驱动的编辑器组件来驱动它。
 
 ## License
 

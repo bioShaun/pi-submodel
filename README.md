@@ -152,7 +152,7 @@ npm test          # node --test
 npm run typecheck
 ```
 
-Architecture: `src/index.ts` is a thin Pi adapter; the actual behavior lives behind a testable command seam in `src/submodel/command.ts`, exercised by tests with a temporary settings file, a fake model registry, and a driveable editor component.
+Architecture: `extensions/index.ts` is a thin Pi adapter; the actual behavior lives behind a testable command seam in `src/submodel/command.ts`, exercised by tests with a temporary settings file, a fake model registry, and a driveable editor component.
 
 ## License
 
