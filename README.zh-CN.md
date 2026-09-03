@@ -12,6 +12,12 @@
 
 ## 安装
 
+从 GitHub 安装（固定到 tag 或 commit ref）：
+
+```
+pi install git:github.com/bioShaun/pi-submodel@v0.1.0
+```
+
 包发布到 npm 之后：
 
 ```
@@ -24,7 +30,7 @@ pi install npm:pi-submodel
 pi install /absolute/path/to/pi-submodel
 ```
 
-然后运行 `/reload`（或重启 Pi），`/submodel` 命令即出现。
+然后运行 `/reload`（或重启 Pi），`/submodel` 命令即出现。要升级到更新的 ref，重新执行 `pi install git:github.com/bioShaun/pi-submodel@<new-ref>`；`pi update --extensions` 会把克隆同步到固定的 ref。
 
 ## 使用
 

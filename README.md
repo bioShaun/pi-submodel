@@ -12,6 +12,12 @@ A Pi extension that registers `/submodel`: a keyboard-first, two-pane TUI for ed
 
 ## Install
 
+From GitHub (pinned to a tag or commit ref):
+
+```
+pi install git:github.com/bioShaun/pi-submodel@v0.1.0
+```
+
 After the package is published to npm:
 
 ```
@@ -24,7 +30,7 @@ Or from a local checkout:
 pi install /absolute/path/to/pi-submodel
 ```
 
-Then run `/reload` (or restart Pi). The `/submodel` command appears.
+Then run `/reload` (or restart Pi). The `/submodel` command appears. To move an existing install to a newer ref, run `pi install git:github.com/bioShaun/pi-submodel@<new-ref>`; `pi update --extensions` reconciles the clone to the pinned ref.
 
 ## Usage
 
