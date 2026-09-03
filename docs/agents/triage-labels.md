@@ -1,0 +1,11 @@
+# Triage Labels
+
+| Canonical role | Local label |
+| --- | --- |
+| `needs-triage` | `needs-triage` |
+| `needs-info` | `needs-info` |
+| `ready-for-agent` | `ready-for-agent` |
+| `ready-for-human` | `ready-for-human` |
+| `wontfix` | `wontfix` |
+
+Skills should use the local label corresponding to each canonical role.

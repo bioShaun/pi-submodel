@@ -1,0 +1,49 @@
+{
+  "name": "pi-submodel",
+  "version": "0.1.0",
+  "description": "Pi extension: keyboard-first /submodel TUI to configure pi-subagents model policy (default model, per-agent primary, thinking, ordered fallbacks)",
+  "type": "module",
+  "license": "MIT",
+  "keywords": [
+    "pi-package",
+    "pi-subagents",
+    "subagents",
+    "model",
+    "tui"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bioShaun/pi-submodel.git"
+  },
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": ">=0.84.4 <1"
+  },
+  "peerDependenciesMeta": {
+    "@earendil-works/pi-coding-agent": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.ts\"",
+    "typecheck": "tsc --noEmit",
+    "prepack": "npm run typecheck && npm test"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE",
+    "CONTEXT.md"
+  ],
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
