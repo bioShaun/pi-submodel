@@ -5,79 +5,52 @@
  * "escape", "tab", "backspace", "delete", "ctrl+c", ...) or, for printable input, the
  * character itself. The editor's key logic is written against these ids, which keeps it
  * testable with synthetic input and independent of any single terminal encoding.
+ *
+ * Parsing delegates to Pi TUI's authoritative key parser (@earendil-works/pi-tui), which
+ * understands legacy CSI/SS3 sequences, CSI-u, and the full Kitty keyboard protocol
+ * (event types, alternate keys, modifiers). The delegation is normalized back to the
+ * editor's own key ids, plus a narrow fallback for legacy forms Pi's parser does not
+ * emit ids for (ESC[1~/ESC[4~ home/end variants) and multi-byte printable characters.
  */
+import { parseKey as parsePiKey } from "@earendil-works/pi-tui";
 
-const CSI_CODES: Record<string, string> = {
-  A: "up",
-  B: "down",
-  C: "right",
-  D: "left",
-  H: "home",
-  F: "end",
+/** Editor key ids that differ from Pi TUI's ids. */
+const ID_ALIASES: Record<string, string> = {
+  pageUp: "pageup",
+  pageDown: "pagedown",
+  esc: "escape",
+  space: " ",
 };
 
-const CSI_TILDE_CODES: Record<string, string> = {
+/** Legacy CSI ~ finals Pi's parser does not map: ESC[1~ home, ESC[4~ end. */
+const LEGACY_TILDE_CODES: Record<string, string> = {
   "1": "home",
-  "3": "delete",
   "4": "end",
-  "5": "pageup",
-  "6": "pagedown",
 };
 
-const CTRL_CODES: Record<number, string> = {
-  3: "ctrl+c",
-  9: "tab",
-};
+function normalizeKey(key: string): string {
+  return ID_ALIASES[key] ?? key;
+}
+
+/**
+ * Fallback for legacy input Pi's parser leaves unparsed: the home/end tilde variants and
+ * printable single code points (including multi-byte UTF-8 characters). Anything else
+ * (unrecognized CSI sequences, control bytes) stays undefined, mirroring the previous
+ * behavior for input the editor does not understand.
+ */
+function parseLegacy(data: string): string | undefined {
+  const tilde = /^\x1b\[(\d+)~$/.exec(data);
+  if (tilde && tilde[1] !== undefined) return LEGACY_TILDE_CODES[tilde[1]];
+  if ([...data].length === 1) {
+    const code = data.codePointAt(0);
+    if (code !== undefined && code >= 32) return data;
+  }
+  return undefined;
+}
 
 /** Parse raw terminal input into a key id, or undefined when unrecognized. */
 export function parseKey(data: string): string | undefined {
-  if (data.length === 0) return undefined;
-
-  if (data === "\x1b") return "escape";
-  if (data === "\r" || data === "\n") return "enter";
-  if (data === "\x7f" || data === "\x08") return "backspace";
-
-  // Kitty / CSI-u form: ESC [ <code> [; <modifiers> [: <event>]] u
-  const csiU = /^\x1b\[(\d+)(?:;\d+(?::\d+)*)u$/.exec(data);
-  if (csiU) {
-    const code = Number(csiU[1]);
-    if (code === 13 || code === 27) return code === 13 ? "enter" : "escape";
-    if (code >= 32 && code < 127) return String.fromCharCode(code);
-    return undefined;
-  }
-
-  if (data.startsWith("\x1b[")) {
-    // CSI ~ finals (navigation/edit keys): ESC [ <param> ~
-    const tilde = /^\x1b\[(\d+)~$/.exec(data);
-    if (tilde && tilde[1] !== undefined) {
-      return CSI_TILDE_CODES[tilde[1]];
-    }
-    // CSI letter finals (arrows/home/end), possibly with parameters: ESC [ 1 ; 5 A
-    const letter = /^\x1b\[[0-9;]*([A-Za-z])$/.exec(data);
-    if (letter && letter[1] !== undefined) {
-      return CSI_CODES[letter[1]];
-    }
-    return undefined;
-  }
-
-  if (data === "\x1bO" || (data.startsWith("\x1bO") && data.length === 3)) {
-    const final = data[2];
-    return final !== undefined ? CSI_CODES[final] : undefined;
-  }
-
-  const ctrl = CTRL_CODES[data.charCodeAt(0)];
-  if (data.length === 1 && ctrl) return ctrl;
-
-  if (data.length === 1) {
-    const code = data.charCodeAt(0);
-    if (code >= 32) return data;
-    return undefined;
-  }
-
-  // Multi-byte printable input (e.g. a decoded UTF-8 char arrives as one event).
-  const firstCode = data.codePointAt(0);
-  if ([...data].length === 1 && firstCode !== undefined && firstCode >= 32) {
-    return data;
-  }
-  return undefined;
+  const key = parsePiKey(data);
+  if (key !== undefined) return normalizeKey(key);
+  return parseLegacy(data);
 }

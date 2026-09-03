@@ -22,6 +22,15 @@ const KEY_BYTES: Record<string, string> = {
   ctrlC: "\x03",
   pageup: "\x1b[5~",
   pagedown: "\x1b[6~",
+  // Kitty keyboard protocol encodings of the same keys (event types, alternate key
+  // codes, modifier fields), as terminals send them with flags 1|2 active.
+  kittyUp: "\x1b[1;1:1A",
+  kittyDown: "\x1b[1;1:1B",
+  kittyEscape: "\x1b[27::27;1:1u",
+  kittyCtrlC: "\x1b[99::99;5:1u",
+  // Simplified (no alternate key code) Kitty Ctrl+C forms.
+  kittyCtrlCSimplified: "\x1b[99;5u",
+  kittyCtrlCEvent: "\x1b[99;5:1u",
 };
 
 export interface StartOptions {
@@ -66,6 +75,7 @@ export async function startSubmodel(options: StartOptions = {}): Promise<Session
   }
 
   let component: SubmodelEditorComponent | null = null;
+  let exited = false;
   let resolveExit!: (exit: EditorExit) => void;
   const exitPromise = new Promise<EditorExit>((resolve) => {
     resolveExit = resolve;
@@ -80,7 +90,10 @@ export async function startSubmodel(options: StartOptions = {}): Promise<Session
     registry: options.models ?? DEFAULT_TEST_MODELS,
     openEditor: (candidate) => {
       component = candidate;
-      candidate.setExitHandler((exit) => resolveExit(exit));
+      candidate.setExitHandler((exit) => {
+        exited = true;
+        resolveExit(exit);
+      });
       return exitPromise;
     },
     notify: (message, level) => notifications.push({ message, level }),
@@ -127,6 +140,15 @@ export async function startSubmodel(options: StartOptions = {}): Promise<Session
       realFs.writeFileSync(settingsPath, content, "utf8");
     },
     cleanup(): void {
+      // Tests must not leave an editor suspended when an assertion fails before the
+      // normal close sequence. Cycle through the modes with non-destructive keys, then
+      // accept a discard prompt if the test made draft changes.
+      for (let attempt = 0; !exited && attempt < 6; attempt += 1) {
+        component?.handleInput("\x1b");
+        component?.handleInput("\x03");
+        component?.handleInput("\x1b");
+        component?.handleInput("\r");
+      }
       rmSync(tmpDir, { recursive: true, force: true });
     },
   };

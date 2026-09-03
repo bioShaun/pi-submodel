@@ -77,6 +77,68 @@ it("opening, navigating, and closing leaves the settings file byte-for-byte unch
   assert.equal(session.readSettings(), bytes);
 });
 
+it("Kitty protocol arrows navigate the navigator entries", async () => {
+  const session = await start({ settings: SETTINGS });
+  const initialSelected = session.lines().find((line) => line.includes("→ "));
+  assert.ok(initialSelected, "default entry is initially selected");
+
+  session.press("kittyDown");
+  const afterDown = session.lines().find((line) => line.includes("→ "));
+  assert.ok(afterDown, "kitty down selects an entry");
+  assert.notEqual(afterDown, initialSelected, "kitty down moves to another navigator entry");
+
+  session.press("kittyUp");
+  assert.equal(
+    session.lines().find((line) => line.includes("→ ")),
+    initialSelected,
+    "kitty up returns to the original navigator entry",
+  );
+});
+
+it("Kitty Ctrl+C closes the selector without typing into its query", async () => {
+  const session = await start({ settings: SETTINGS });
+  session.press("enter", "enter");
+  assert.ok(session.text().includes("Search: ▌"), "selector is open with an empty query");
+
+  session.press("kittyCtrlC");
+  let text = session.text();
+  assert.ok(!text.includes("Search:"), "selector closed — ctrl+c never landed in the query");
+  assert.ok(text.includes("> Default model:"), "back in field mode");
+
+  // The simplified and event-typed Kitty ctrl+c encodings must behave identically.
+  for (const key of ["kittyCtrlCEvent", "kittyCtrlCSimplified"] as const) {
+    session.press("enter");
+    assert.ok(session.text().includes("Search: ▌"), "selector reopened");
+    session.press(key);
+    text = session.text();
+    assert.ok(!text.includes("Search:"), `${key} closed the selector instead of typing`);
+    assert.ok(text.includes("> Default model:"), `${key} returned to field mode`);
+  }
+
+  // The editor is still alive: kitty Esc walks back to the navigator, kitty ctrl+c closes it.
+  session.press("kittyEscape");
+  session.press("kittyCtrlCSimplified");
+  const exit = await session.awaitExit();
+  assert.equal(exit.action, "cancelled");
+  assert.equal(session.readSettings(), SETTINGS, "no settings written");
+});
+
+it("a clean navigator exits with Kitty Esc", async () => {
+  const session = await start({ settings: SETTINGS });
+  session.press("kittyEscape");
+  const exit = await session.awaitExit();
+  assert.equal(exit.action, "cancelled");
+  assert.equal(session.readSettings(), SETTINGS, "closing without edits writes nothing");
+});
+
+it("a clean navigator exits with Kitty Ctrl+C in its simplified encoding", async () => {
+  const session = await start({ settings: SETTINGS });
+  session.press("kittyCtrlCSimplified");
+  const exit = await session.awaitExit();
+  assert.equal(exit.action, "cancelled");
+  assert.equal(session.readSettings(), SETTINGS, "closing without edits writes nothing");
+});
+
 it("refuses to open for an incompatible pi-subagents version and reports it clearly", async () => {
   const session = await start({ settings: SETTINGS, version: "0.63.2" });
   assert.equal(session.opened, false);

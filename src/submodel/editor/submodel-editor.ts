@@ -450,10 +450,12 @@ export function createSubmodelEditor(deps: SubmodelEditorDeps): SubmodelEditorCo
   }
 
   function isPrintableKey(key: string): boolean {
-    if (["up", "down", "left", "right", "enter", "escape", "tab", "backspace", "delete", "home", "end", "pageup", "pagedown"].includes(key)) {
-      return false;
-    }
-    return !key.startsWith("ctrl+");
+    // Only a single printable code point reaches the query. Named keys ("up", "escape",
+    // ...) and modifier combos reported by the parser ("ctrl+c", "shift+tab", ...) are
+    // never treated as text.
+    if ([...key].length !== 1) return false;
+    const code = key.codePointAt(0);
+    return code !== undefined && code >= 32;
   }
 
   function handlePreviewKey(key: string): void {
