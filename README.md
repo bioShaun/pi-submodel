@@ -1,5 +1,7 @@
 # pi-submodel
 
+English | [简体中文](README.zh-CN.md)
+
 A Pi extension that registers `/submodel`: a keyboard-first, two-pane TUI for editing the native `pi-subagents` model policy in your user-level settings file (`~/.pi/agent/settings.json`) — the default subagent model, each agent's primary model, thinking level, and ordered fallback route. No JSON hand-editing, and the parent session model is never touched.
 
 ## Compatibility
