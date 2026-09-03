@@ -15,7 +15,7 @@ export interface Draft {
   agents: Record<string, AgentPolicy>;
 }
 
-function cloneManagedPolicy(policy: AgentPolicy): AgentPolicy {
+export function cloneManagedPolicy(policy: AgentPolicy): AgentPolicy {
   const copy: AgentPolicy = {};
   if (policy.model !== undefined) copy.model = policy.model;
   if (policy.thinking !== undefined) copy.thinking = policy.thinking;
@@ -36,11 +36,11 @@ export function cloneDraft(draft: Draft): Draft {
 }
 
 /** Policy serialized for dirty comparison (managed fields only). */
-function policyKey(policy: AgentPolicy): string {
+export function policyKey(policy: AgentPolicy | undefined): string {
   return JSON.stringify([
-    policy.model ?? null,
-    policy.thinking ?? null,
-    policy.fallbackModels === false ? false : policy.fallbackModels ?? null,
+    policy?.model ?? null,
+    policy?.thinking ?? null,
+    policy?.fallbackModels === false ? false : policy?.fallbackModels ?? null,
   ]);
 }
 

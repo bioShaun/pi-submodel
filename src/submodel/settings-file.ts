@@ -124,13 +124,20 @@ export function extractManagedPolicy(doc: Record<string, unknown>): {
  * Read and validate the settings file. Missing files load as an empty document; malformed
  * content or incompatible shapes throw SettingsError so editing never guesses.
  */
-export function readSettingsFile(fs: FsLike, path: string): LoadedSettings {
+interface ValidatedDocument {
+  existed: boolean;
+  fingerprint: string;
+  doc: Record<string, unknown>;
+}
+
+/** Read and validate the on-disk document, shared by open and pre-save re-reads. */
+function readValidatedDocument(fs: FsLike, path: string): ValidatedDocument {
   if (!fs.existsSync(path)) {
-    return { doc: {}, existed: false, fingerprint: ABSENT_FINGERPRINT, agents: {} };
+    return { existed: false, fingerprint: ABSENT_FINGERPRINT, doc: {} };
   }
   const raw = fs.readFileSync(path);
   if (raw.length === 0) {
-    return { doc: {}, existed: true, fingerprint: fingerprintOf(raw), agents: {} };
+    return { existed: true, fingerprint: fingerprintOf(raw), doc: {} };
   }
   let parsed: unknown;
   try {
@@ -139,12 +146,16 @@ export function readSettingsFile(fs: FsLike, path: string): LoadedSettings {
     throw new SettingsError(`Invalid JSON in ${path}: ${error instanceof Error ? error.message : String(error)}`);
   }
   validateDocument(path, parsed);
-  const doc = parsed as Record<string, unknown>;
-  const managed = extractManagedPolicy(doc);
+  return { existed: true, fingerprint: fingerprintOf(raw), doc: parsed as Record<string, unknown> };
+}
+
+export function readSettingsFile(fs: FsLike, path: string): LoadedSettings {
+  const snapshot = readValidatedDocument(fs, path);
+  const managed = extractManagedPolicy(snapshot.doc);
   const loaded: LoadedSettings = {
-    doc,
-    existed: true,
-    fingerprint: fingerprintOf(raw),
+    doc: snapshot.doc,
+    existed: snapshot.existed,
+    fingerprint: snapshot.fingerprint,
     agents: managed.agents,
   };
   if (managed.defaultModel !== undefined) loaded.defaultModel = managed.defaultModel;
@@ -152,21 +163,8 @@ export function readSettingsFile(fs: FsLike, path: string): LoadedSettings {
 }
 
 /** Re-read the current on-disk content and validate it (used before every save). */export function rereadSnapshot(fs: FsLike, path: string): SettingsSnapshot {
-  if (!fs.existsSync(path)) {
-    return { doc: {}, existed: false, fingerprint: ABSENT_FINGERPRINT };
-  }
-  const raw = fs.readFileSync(path);
-  if (raw.length === 0) {
-    return { doc: {}, existed: true, fingerprint: fingerprintOf(raw) };
-  }
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw.toString("utf8"));
-  } catch (error) {
-    throw new SettingsError(`Invalid JSON in ${path}: ${error instanceof Error ? error.message : String(error)}`);
-  }
-  validateDocument(path, parsed);
-  return { doc: parsed as Record<string, unknown>, existed: true, fingerprint: fingerprintOf(raw) };
+  const snapshot = readValidatedDocument(fs, path);
+  return { doc: snapshot.doc, existed: snapshot.existed, fingerprint: snapshot.fingerprint };
 }
 
 /**

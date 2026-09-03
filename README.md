@@ -103,7 +103,7 @@ Inherit semantics:
 - An emptied fallback list removes `agentOverrides.<name>.fallbackModels`.
 - When removing managed fields leaves an override object empty, the entry is removed, along with any parent objects the cleanup empties.
 
-Thinking levels: `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, plus **Default** (removes the override). An existing explicit `"thinking": false` is preserved as-is.
+Thinking levels: `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, plus **Default** (removes the override). An existing explicit `"thinking": false` is preserved as-is; likewise an explicit `"fallbackModels": false` is preserved verbatim (removable via Reset).
 
 ## Safety
 

@@ -10,6 +10,7 @@
  * directly with synthetic keys and read its rendered lines.
  */
 import { parseKey } from "../keys.ts";
+import { cloneManagedPolicy, policyKey } from "../settings-draft.ts";
 import { BUILTIN_AGENTS, RELOAD_GUIDANCE, THINKING_LEVELS } from "../pi-subagents.ts";
 import { fuzzyFilter } from "../model-catalog.ts";
 import { cloneDraft, isDraftDirty, previewSubagents } from "../settings-draft.ts";
@@ -83,13 +84,7 @@ export function createSubmodelEditor(deps: SubmodelEditorDeps): SubmodelEditorCo
   let draft: Draft = { agents: {} };
   if (loaded.defaultModel !== undefined) draft.defaultModel = loaded.defaultModel;
   for (const [name, policy] of Object.entries(loaded.agents)) {
-    const copy: AgentPolicy = {};
-    if (policy.model !== undefined) copy.model = policy.model;
-    if (policy.thinking !== undefined) copy.thinking = policy.thinking;
-    if (policy.fallbackModels !== undefined) {
-      copy.fallbackModels = policy.fallbackModels === false ? false : [...policy.fallbackModels];
-    }
-    draft.agents[name] = copy;
+    draft.agents[name] = cloneManagedPolicy(policy);
   }
   let baseline: Draft = cloneDraft(draft);
 
@@ -105,7 +100,7 @@ export function createSubmodelEditor(deps: SubmodelEditorDeps): SubmodelEditorCo
   let exitHandler: ((exit: EditorExit) => void) | null = null;
   let cache: { width: number; lines: string[] } | null = null;
 
-  function bump(): void {
+  function invalidateCache(): void {
     cache = null;
   }
 
@@ -155,21 +150,13 @@ export function createSubmodelEditor(deps: SubmodelEditorDeps): SubmodelEditorCo
     const changed = new Set<string>();
     if ((draft.defaultModel ?? undefined) !== (baseline.defaultModel ?? undefined)) changed.add("default");
     for (const name of agentNames) {
-      if (policyKeyOf(draft.agents[name]) !== policyKeyOf(baseline.agents[name])) changed.add(name);
+      if (policyKey(draft.agents[name]) !== policyKey(baseline.agents[name])) changed.add(name);
     }
     return changed;
   }
 
   function isDirty(): boolean {
     return isDraftDirty(draft, baseline);
-  }
-
-  function policyKeyOf(policy: AgentPolicy | undefined): string {
-    return JSON.stringify([
-      policy?.model ?? null,
-      policy?.thinking ?? null,
-      policy?.fallbackModels === false ? false : policy?.fallbackModels ?? null,
-    ]);
   }
 
   function openSelector(kind: SelectorKind, agent: string | null): void {
@@ -180,7 +167,7 @@ export function createSubmodelEditor(deps: SubmodelEditorDeps): SubmodelEditorCo
     state.cursor = index === -1 ? 0 : index;
     selector = state;
     mode = "selector";
-    bump();
+    invalidateCache();
   }
 
   function currentSelectorValue(state: SelectorState): string | undefined {
@@ -235,12 +222,12 @@ export function createSubmodelEditor(deps: SubmodelEditorDeps): SubmodelEditorCo
     const notice = applySelectorValue(state, item.key);
     if (notice !== undefined) {
       state.notice = notice;
-      bump();
+      invalidateCache();
       return;
     }
     selector = null;
     mode = "field";
-    bump();
+    invalidateCache();
   }
 
   /** Returns a rejection notice, or undefined when applied to the draft. */
@@ -291,7 +278,7 @@ export function createSubmodelEditor(deps: SubmodelEditorDeps): SubmodelEditorCo
   function openPreview(): void {
     mode = "preview";
     previewOffset = 0;
-    bump();
+    invalidateCache();
   }
 
   function confirmSave(): void {
@@ -308,7 +295,7 @@ export function createSubmodelEditor(deps: SubmodelEditorDeps): SubmodelEditorCo
       banner = { level: "error", lines: [result.error] };
     }
     mode = "navigate";
-    bump();
+    invalidateCache();
   }
 
   function resetSelectedRole(): void {
@@ -318,7 +305,7 @@ export function createSubmodelEditor(deps: SubmodelEditorDeps): SubmodelEditorCo
     } else {
       draft.agents[name] = {};
     }
-    bump();
+    invalidateCache();
   }
 
   function deleteFallbackAtCursor(): void {
@@ -334,7 +321,7 @@ export function createSubmodelEditor(deps: SubmodelEditorDeps): SubmodelEditorCo
       policy!.fallbackModels = route;
     }
     if (fallbackCursor >= route.length) fallbackCursor = Math.max(0, route.length - 1);
-    bump();
+    invalidateCache();
   }
 
   function moveFallback(delta: number): void {
@@ -346,7 +333,7 @@ export function createSubmodelEditor(deps: SubmodelEditorDeps): SubmodelEditorCo
     [route[fallbackCursor], route[target]] = [route[target]!, route[fallbackCursor]!];
     policyFor(name)!.fallbackModels = route;
     fallbackCursor = target;
-    bump();
+    invalidateCache();
   }
 
   /** Move the route highlight without reordering (j/k while on the fallback field). */
@@ -357,7 +344,7 @@ export function createSubmodelEditor(deps: SubmodelEditorDeps): SubmodelEditorCo
     const target = fallbackCursor + delta;
     if (route.length === 0 || target < 0 || target >= route.length) return;
     fallbackCursor = target;
-    bump();
+    invalidateCache();
   }
 
   function handleNavigateKey(key: string): void {
@@ -375,7 +362,7 @@ export function createSubmodelEditor(deps: SubmodelEditorDeps): SubmodelEditorCo
     } else if (key === "escape" || key === "ctrl+c") {
       if (isDirty()) {
         mode = "discard";
-        bump();
+        invalidateCache();
       } else {
         exitNow();
       }
@@ -385,7 +372,7 @@ export function createSubmodelEditor(deps: SubmodelEditorDeps): SubmodelEditorCo
     } else {
       return;
     }
-    bump();
+    invalidateCache();
   }
 
   function handleFieldKey(key: string): void {
@@ -431,7 +418,7 @@ export function createSubmodelEditor(deps: SubmodelEditorDeps): SubmodelEditorCo
     } else {
       return;
     }
-    bump();
+    invalidateCache();
   }
 
   function handleSelectorKey(key: string): void {
@@ -459,7 +446,7 @@ export function createSubmodelEditor(deps: SubmodelEditorDeps): SubmodelEditorCo
     } else {
       return;
     }
-    bump();
+    invalidateCache();
   }
 
   function isPrintableKey(key: string): boolean {
@@ -487,7 +474,7 @@ export function createSubmodelEditor(deps: SubmodelEditorDeps): SubmodelEditorCo
     } else {
       return;
     }
-    bump();
+    invalidateCache();
   }
 
   function handleDiscardKey(key: string): void {
@@ -497,7 +484,7 @@ export function createSubmodelEditor(deps: SubmodelEditorDeps): SubmodelEditorCo
     }
     if (key === "escape" || key === "ctrl+c") {
       mode = "navigate";
-      bump();
+      invalidateCache();
     }
   }
 
@@ -653,7 +640,9 @@ export function createSubmodelEditor(deps: SubmodelEditorDeps): SubmodelEditorCo
     lines.push("");
     const json = JSON.stringify(previewSubagents(loaded.doc, draft), null, 2);
     const jsonLines = json.split("\n");
-    const visible = jsonLines.slice(previewOffset);
+    // Clamp so scrolling past the end cannot hide the JSON (and its Enter-to-save) entirely.
+    const offset = Math.min(previewOffset, Math.max(0, jsonLines.length - 1));
+    const visible = jsonLines.slice(offset);
     for (const line of visible) {
       lines.push(truncateAnsi(line, width));
     }
@@ -745,7 +734,7 @@ export function createSubmodelEditor(deps: SubmodelEditorDeps): SubmodelEditorCo
   return {
     render,
     handleInput,
-    invalidate: bump,
+    invalidate: invalidateCache,
     setExitHandler(handler: (exit: EditorExit) => void): void {
       exitHandler = handler;
     },
